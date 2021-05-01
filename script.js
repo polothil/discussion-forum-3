@@ -39,14 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
       let type = parts[0];
       let id = parts[parts.length - 1];
 
-      commentArr.forEach((comment) => {
-        if (comment.id === id) {
-          comment[type]++;
-        }
-      });
-      location.reload();
+      // For reverse Chronology
+      id = commentArr.length - parseInt(id) - 1;
 
-      // commentArr[id][type]++;
+      commentArr[id][type]++;
       renderComments();
       storeComments();
     }
@@ -121,8 +117,16 @@ let renderComment = (comment) => {
 			</div>`;
   if (comment.childrenIds.length != 0) {
     listElem += `<ul id="childlist-${id}">`;
-    comment.childrenIds.forEach((commentId) => {
-      listElem += renderComment(commentArr[commentId]);
+
+    comment.childrenIds.forEach((childrenId) => {
+      commentArr.forEach((comment, index) => {
+        if (comment.id == childrenId) {
+          listElem += renderComment(commentArr[index]);
+          return;
+        }
+      });
+
+      // listElem += renderComment(commentArr[commentId]);
     });
     listElem += '</ul>';
   }
@@ -133,31 +137,6 @@ let renderComment = (comment) => {
 
 // Pass parent comment from rootComments to renderComment
 let renderComments = () => {
-  let newArr = [...commentArr];
-
-  for (let index = 0; index < newArr.length - 1; index++) {
-    if (newArr[index].parentId === null || newArr[index].parentId == 'null') {
-      let latest = { ...newArr[index] };
-      let latestIndex = index;
-      for (let index2 = index + 1; index2 < newArr.length; index2++) {
-        if (
-          (newArr[index2].parentId === null || newArr[index2].parentId == 'null') &&
-          newArr[index].timeValue < newArr[index2].timeValue
-        ) {
-          latest = { ...newArr[index2] };
-          latestIndex = index2;
-        }
-      }
-      let temp = { ...newArr[index] };
-      newArr[index] = { ...latest };
-      newArr[latestIndex] = { ...temp };
-    }
-  }
-
-  // console.log(`newArr`, newArr);
-  commentArr = newArr;
-  // console.log(`commentArr`, commentArr);
-
   let rootComments = [];
   commentArr.forEach((comment) => {
     if (comment.parentId === null || comment.parentId == 'null') {
@@ -165,6 +144,7 @@ let renderComments = () => {
     }
   });
   let commentList = '';
+
   rootComments.forEach((comment) => {
     commentList += renderComment(comment);
   });
@@ -174,11 +154,11 @@ let renderComments = () => {
 // Adding new comment to memory and UI
 let addComment = (name, content, parent) => {
   let comment = new Comment(commentArr.length, name, content, 0, 0, parent);
-  commentArr.push(comment);
+  commentArr.unshift(comment); //unshift instead of push for reverse chronology
   if (parent != null) {
     commentArr.forEach((comment) => {
       if (parseInt(comment.id) === parseInt(parent)) {
-        comment.childrenIds.push(commentArr.length - 1);
+        comment.childrenIds.unshift(commentArr.length - 1); //unshift instead of push for reverse chronology
       }
     });
   }
@@ -196,7 +176,6 @@ class Comment {
     this.downvotes = downvotes;
     this.childrenIds = [];
     this.parentId = parentId;
-    this.timeValue = this.lastUpdated.valueOf();
   }
   static toJSONString(comment) {
     // create JSON string to send/save on server
@@ -208,8 +187,7 @@ class Comment {
 			"downvotes" : "${comment.downvotes}",
 			"lastUpdated": "${comment.lastUpdated}",
 			"parentId": "${comment.parentId}",
-			"childrenIds": "${JSON.stringify(comment.childrenIds)}",
-      "timeValue": "${comment.timeValue}"
+			"childrenIds": "${JSON.stringify(comment.childrenIds)}"
 		}`;
   }
 }
